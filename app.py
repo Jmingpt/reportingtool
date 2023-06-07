@@ -197,28 +197,28 @@ def run():
         st.divider()
 
         # ----------------------------------Races---------------------------------- #
-        st.subheader('7. Races Prediction (Additional)')
-        with open('races_prediction_model.pkl', 'rb') as f:
-            vec, model = pickle.load(f)
+#         st.subheader('7. Races Prediction (Additional)')
+#         with open('races_prediction_model.pkl', 'rb') as f:
+#             vec, model = pickle.load(f)
 
-        df_race = data[data['Status'] != 'Cancelled'][['Name ID', 'Contact Name']]
-        name = df_race['Contact Name']
-        name = vec.transform(name)
-        races = model.predict(name)
-        df_race['predicted_race'] = races
-        df_race = df_race.drop('Contact Name', axis=1)
-        df = pd.merge(data, df_race, on='Name ID', how='left')
-        df = df[df['Status'] != 'Cancelled'].groupby('predicted_race')\
-                                            .agg({'Name ID': 'nunique', 'Booking No': 'nunique'})\
-                                            .sort_values('Booking No', ascending=False)\
-                                            .reset_index()
-        df.columns = ['Predicted Race', 'Number of Guest', 'Number of Booking']
-        st.dataframe(
-            data=df,
-            use_container_width=True,
-            hide_index=True,
-        )
-        download_csv(df, 'Races')
+#         df_race = data[data['Status'] != 'Cancelled'][['Name ID', 'Contact Name']]
+#         name = df_race['Contact Name']
+#         name = vec.transform(name)
+#         races = model.predict(name)
+#         df_race['predicted_race'] = races
+#         df_race = df_race.drop('Contact Name', axis=1)
+#         df = pd.merge(data, df_race, on='Name ID', how='left')
+#         df = df[df['Status'] != 'Cancelled'].groupby('predicted_race')\
+#                                             .agg({'Name ID': 'nunique', 'Booking No': 'nunique'})\
+#                                             .sort_values('Booking No', ascending=False)\
+#                                             .reset_index()
+#         df.columns = ['Predicted Race', 'Number of Guest', 'Number of Booking']
+#         st.dataframe(
+#             data=df,
+#             use_container_width=True,
+#             hide_index=True,
+#         )
+#         download_csv(df, 'Races')
 
 
 if __name__ == "__main__":
