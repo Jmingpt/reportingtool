@@ -41,9 +41,9 @@ def run():
         type='xlsx',
         accept_multiple_files=False,
     )
-    st.divider()
 
     if uploaded_file:
+        st.divider()
         data = pd.read_excel(uploaded_file, skiprows=2).dropna(subset='Booking Date')
         data['Booking Date'] = data['Booking Date'].apply(lambda x: x[:-6])
         data['Booking Date'] = pd.to_datetime(data['Booking Date'])
