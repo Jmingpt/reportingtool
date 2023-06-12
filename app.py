@@ -180,25 +180,25 @@ def run():
         st.divider()
 
         # ------------------------------------------Races------------------------------------------ #
-        st.subheader('7. Races Prediction (Additional)')
-        with open('races_prediction_model.pkl', 'rb') as f:
-            vec, model = pickle.load(f)
+#         st.subheader('7. Races Prediction (Additional)')
+#         with open('races_prediction_model.pkl', 'rb') as f:
+#             vec, model = pickle.load(f)
 
-        tmp_race = data[data['Status'] != 'Cancelled'][['Name ID', 'Contact Name']]
-        name = tmp_race['Contact Name']
-        name = vec.transform(name)
-        races = model.predict(name)
-        tmp_race['predicted_race'] = races
-        tmp_race = tmp_race.drop('Contact Name', axis=1)
-        df_race = pd.merge(data, tmp_race, on='Name ID', how='left')
-        df_race = df_race[df_race['Status'] != 'Cancelled'].groupby('predicted_race')\
-                                                           .agg({'Name ID': 'nunique', 'Booking No': 'nunique'})\
-                                                           .sort_values('Booking No', ascending=False)\
-                                                           .reset_index()
-        df_race.loc[df_race.shape[0]] = df_race.sum()
-        df_race.iloc[-1, 0] = 'Grand Total'
-        df_race.columns = ['Predicted Race', 'Number of Guest', 'Number of Booking']
-        displayNdownload(df_race, 'Races')
+#         tmp_race = data[data['Status'] != 'Cancelled'][['Name ID', 'Contact Name']]
+#         name = tmp_race['Contact Name']
+#         name = vec.transform(name)
+#         races = model.predict(name)
+#         tmp_race['predicted_race'] = races
+#         tmp_race = tmp_race.drop('Contact Name', axis=1)
+#         df_race = pd.merge(data, tmp_race, on='Name ID', how='left')
+#         df_race = df_race[df_race['Status'] != 'Cancelled'].groupby('predicted_race')\
+#                                                            .agg({'Name ID': 'nunique', 'Booking No': 'nunique'})\
+#                                                            .sort_values('Booking No', ascending=False)\
+#                                                            .reset_index()
+#         df_race.loc[df_race.shape[0]] = df_race.sum()
+#         df_race.iloc[-1, 0] = 'Grand Total'
+#         df_race.columns = ['Predicted Race', 'Number of Guest', 'Number of Booking']
+#         displayNdownload(df_race, 'Races')
 
 
 if __name__ == "__main__":
