@@ -55,15 +55,17 @@ def piechart_plot(df, labels, values):
 
 def rawdata_preprocess(uploaded_file):
     data = pd.read_excel(uploaded_file, skiprows=2).dropna(subset='Booking Date')
-    data['Booking Date'] = data['Booking Date'].apply(lambda x: x[:-6])
-    data['Booking Date'] = pd.to_datetime(data['Booking Date'])
-    data['Arrival Date'] = pd.to_datetime(data['Arrival Date'])
-    data['Name ID'] = data['Contact Name'].apply(lambda x: x.lower().replace(' ', ''))
-    data = data[data['Status'] != 'Cancelled']
-    data = data.drop(['Email', 'Phone No'], axis=1)
-    data = data.astype({"Booking No": "string"})
 
-    return data
+    if 'Booking No' in data.columns:
+        data['Booking Date'] = data['Booking Date'].apply(lambda x: x[:-6])
+        data['Booking Date'] = pd.to_datetime(data['Booking Date'])
+        data['Arrival Date'] = pd.to_datetime(data['Arrival Date'])
+        data['Name ID'] = data['Contact Name'].apply(lambda x: x.lower().replace(' ', ''))
+        data = data[data['Status'] != 'Cancelled']
+        data = data.drop(['Email', 'Phone No'], axis=1)
+        data = data.astype({"Booking No": "string"})
+
+        return data
 
 
 def run():
@@ -91,143 +93,152 @@ def run():
     # -----------------------------------------------File Management----------------------------------------------- #
     if uploaded_file:
         data = rawdata_preprocess(uploaded_file)
-        start_date = min(data['Booking Date']).strftime('%Y-%m-%d')
-        end_date = max(data['Booking Date']).strftime('%Y-%m-%d')
-        date_range = f"""Date Range: **_{start_date} - {end_date}_**"""
-        date_range_ph.markdown(date_range)
+        if data is not None:
+            data_cols = data.columns
+            start_date = min(data['Booking Date']).strftime('%Y-%m-%d')
+            end_date = max(data['Booking Date']).strftime('%Y-%m-%d')
+            date_range = f"""Date Range: **_{start_date} - {end_date}_**"""
+            date_range_ph.markdown(date_range)
 
-        with open('./analysis.json', 'r') as f:
-            analysis_list = json.load(f).get('analysis')
+            with open('./analysis.json', 'r') as f:
+                analysis_list = json.load(f).get('analysis')
 
-        # --------------------------------------------Return-------------------------------------------- #
-        st.divider()
-        st.subheader(analysis_list[0])
-        df_return = group_dataframe(data, 'Name ID', 'Booking No')
-        df_return['Status'] = df_return['Booking No'].apply(lambda x: 'Return' if x > 1 else 'First-time')
-        df_return = group_dataframe(df_return, 'Status', 'Name ID')
-        df_return.columns = ['Status', 'Number of Guest']
-        # piechart_plot(df_return, labels='Status', values='Number of Guest')
-        df_return.loc[df_return.shape[0]] = df_return.sum()
-        df_return.iloc[-1, 0] = 'Grand Total'
-        display_download(df_return, 'Return')
+            # --------------------------------------------Return-------------------------------------------- #
+            if 'Booking No' in data_cols:
+                st.divider()
+                st.subheader(analysis_list[0])
+                df_return = group_dataframe(data, 'Name ID', 'Booking No')
+                df_return['Status'] = df_return['Booking No'].apply(lambda x: 'Return' if x > 1 else 'First-time')
+                df_return = group_dataframe(df_return, 'Status', 'Name ID')
+                df_return.columns = ['Status', 'Number of Guest']
+                # piechart_plot(df_return, labels='Status', values='Number of Guest')
+                df_return.loc[df_return.shape[0]] = df_return.sum()
+                df_return.iloc[-1, 0] = 'Grand Total'
+                display_download(df_return, 'Return')
 
-        # --------------------------------------------Room Type-------------------------------------------- #
-        st.divider()
-        st.subheader(analysis_list[1])
-        df_room = group_dataframe(data, 'Room Type', 'Booking No')
-        df_room.columns = ['Room Type', 'Number of Booking']
-        df_room.loc[df_room.shape[0]] = df_room.sum()
-        df_room.iloc[-1, 0] = 'Grand Total'
-        display_download(df_room, 'Room Type')
+            # --------------------------------------------Room Type-------------------------------------------- #
+            if 'Booking No' in data_cols and 'Room Type' in data_cols:
+                st.divider()
+                st.subheader(analysis_list[1])
+                df_room = group_dataframe(data, 'Room Type', 'Booking No')
+                df_room.columns = ['Room Type', 'Number of Booking']
+                df_room.loc[df_room.shape[0]] = df_room.sum()
+                df_room.iloc[-1, 0] = 'Grand Total'
+                display_download(df_room, 'Room Type')
 
-        # --------------------------------------------People-------------------------------------------- #
-        st.divider()
-        st.subheader(analysis_list[2])
-        df_ppl = data[['Booking No', 'Room Type', 'NoAdult']].copy()
-        df_ppl['People Type'] = df_ppl['NoAdult'].apply(lambda x: 'Single' if x == 1 else 'Double' if x == 2 else 'Group')
-        df_ppl.columns = ['Number of Booking', 'Room Type', 'Number of Adult', 'People Type']
-        tmp1_ppl = group_dataframe(df_ppl, 'People Type', 'Number of Booking')
-        tmp1_ppl.loc[tmp1_ppl.shape[0]] = tmp1_ppl.sum()
-        tmp1_ppl.iloc[-1, 0] = 'Grand Total'
+            # --------------------------------------------People-------------------------------------------- #
+            if 'Booking No' in data_cols and 'NoAdult' in data_cols:
+                st.divider()
+                st.subheader(analysis_list[2])
+                df_ppl = data[['Booking No', 'Room Type', 'NoAdult']].copy()
+                df_ppl['People Type'] = df_ppl['NoAdult'].apply(lambda x: 'Single' if x == 1 else 'Double' if x == 2 else 'Group')
+                df_ppl.columns = ['Number of Booking', 'Room Type', 'Number of Adult', 'People Type']
+                tmp1_ppl = group_dataframe(df_ppl, 'People Type', 'Number of Booking')
+                tmp1_ppl.loc[tmp1_ppl.shape[0]] = tmp1_ppl.sum()
+                tmp1_ppl.iloc[-1, 0] = 'Grand Total'
 
-        tmp2_ppl = group_dataframe(df_ppl, ['People Type', 'Room Type'], 'Number of Booking')
-        pivot_table = pd.pivot_table(
-            data=tmp2_ppl,
-            values='Number of Booking',
-            index='Room Type',
-            columns='People Type',
-            fill_value=0,
-            sort=True
-        )
-        display_download(tmp1_ppl, 'Customer')
-        display_download(pivot_table, 'Customer and Room Type', False, True)
+                tmp2_ppl = group_dataframe(df_ppl, ['People Type', 'Room Type'], 'Number of Booking')
+                pivot_table = pd.pivot_table(
+                    data=tmp2_ppl,
+                    values='Number of Booking',
+                    index='Room Type',
+                    columns='People Type',
+                    fill_value=0,
+                    sort=True
+                )
+                display_download(tmp1_ppl, 'Customer')
+                display_download(pivot_table, 'Customer and Room Type', False, True)
 
-        # --------------------------------------------Time-------------------------------------------- #
-        st.divider()
-        st.subheader(analysis_list[3])
-        booking_cols = st.columns((1, 1))
-        arrival_cols = st.columns((1, 1))
+            # --------------------------------------------Time-------------------------------------------- #
+            if 'Booking No' in data_cols and 'Booking Date' in data_cols:
+                st.divider()
+                st.subheader(analysis_list[3])
+                booking_cols = st.columns((1, 1))
+                arrival_cols = st.columns((1, 1))
 
-        df_when = data[['Booking No', 'Booking Date', 'Arrival Date']].copy()
-        df_when['Booking Day'] = df_when['Booking Date'].apply(lambda x: x.strftime('%A'))
-        df_when['Arrival Day'] = df_when['Arrival Date'].apply(lambda x: x.strftime('%A'))
-        df_when['Booking WDay'] = df_when['Booking Day'].apply(lambda x: 'Weekday' if x != 'Saturday' and x != 'Sunday' else 'Weekend')
-        df_when['Arrival WDay'] = df_when['Arrival Day'].apply(lambda x: 'Weekday' if x != 'Saturday' and x != 'Sunday' else 'Weekend')
-        df_when.columns = [
-            'Number of Booking',
-            'Booking Date',
-            'Arrival Date',
-            'Booking Day',
-            'Arrival Day',
-            'Booking WDay',
-            'Arrival WDay'
-        ]
-        df_bookingd = group_dataframe(df_when, 'Booking Day', 'Number of Booking')
-        df_bookingd.loc[df_bookingd.shape[0]] = df_bookingd.sum()
-        df_bookingd.iloc[-1, 0] = 'Grand Total'
+                df_when = data[['Booking No', 'Booking Date', 'Arrival Date']].copy()
+                df_when['Booking Day'] = df_when['Booking Date'].apply(lambda x: x.strftime('%A'))
+                df_when['Arrival Day'] = df_when['Arrival Date'].apply(lambda x: x.strftime('%A'))
+                df_when['Booking WDay'] = df_when['Booking Day'].apply(lambda x: 'Weekday' if x != 'Saturday' and x != 'Sunday' else 'Weekend')
+                df_when['Arrival WDay'] = df_when['Arrival Day'].apply(lambda x: 'Weekday' if x != 'Saturday' and x != 'Sunday' else 'Weekend')
+                df_when.columns = [
+                    'Number of Booking',
+                    'Booking Date',
+                    'Arrival Date',
+                    'Booking Day',
+                    'Arrival Day',
+                    'Booking WDay',
+                    'Arrival WDay'
+                ]
+                df_bookingd = group_dataframe(df_when, 'Booking Day', 'Number of Booking')
+                df_bookingd.loc[df_bookingd.shape[0]] = df_bookingd.sum()
+                df_bookingd.iloc[-1, 0] = 'Grand Total'
 
-        df_bookingw = group_dataframe(df_when, 'Booking WDay', 'Number of Booking')
-        df_bookingw.loc[df_bookingw.shape[0]] = df_bookingw.sum()
-        df_bookingw.iloc[-1, 0] = 'Grand Total'
+                df_bookingw = group_dataframe(df_when, 'Booking WDay', 'Number of Booking')
+                df_bookingw.loc[df_bookingw.shape[0]] = df_bookingw.sum()
+                df_bookingw.iloc[-1, 0] = 'Grand Total'
 
-        df_arrivald = group_dataframe(df_when, 'Arrival Day', 'Number of Booking')
-        df_arrivald.loc[df_arrivald.shape[0]] = df_arrivald.sum()
-        df_arrivald.iloc[-1, 0] = 'Grand Total'
+                df_arrivald = group_dataframe(df_when, 'Arrival Day', 'Number of Booking')
+                df_arrivald.loc[df_arrivald.shape[0]] = df_arrivald.sum()
+                df_arrivald.iloc[-1, 0] = 'Grand Total'
 
-        df_arrivalw = group_dataframe(df_when, 'Arrival WDay', 'Number of Booking')
-        df_arrivalw.loc[df_arrivalw.shape[0]] = df_arrivalw.sum()
-        df_arrivalw.iloc[-1, 0] = 'Grand Total'
+                df_arrivalw = group_dataframe(df_when, 'Arrival WDay', 'Number of Booking')
+                df_arrivalw.loc[df_arrivalw.shape[0]] = df_arrivalw.sum()
+                df_arrivalw.iloc[-1, 0] = 'Grand Total'
 
-        with booking_cols[0]:
-            display_download(df_bookingd, 'Booking Day')
-        with booking_cols[1]:
-            display_download(df_bookingw, 'Booking WDay')
-        with arrival_cols[0]:
-            display_download(df_arrivald, 'Arrival Day')
-        with arrival_cols[1]:
-            display_download(df_arrivalw, 'Arrival WDay')
+                with booking_cols[0]:
+                    display_download(df_bookingd, 'Booking Day')
+                with booking_cols[1]:
+                    display_download(df_bookingw, 'Booking WDay')
+                with arrival_cols[0]:
+                    display_download(df_arrivald, 'Arrival Day')
+                with arrival_cols[1]:
+                    display_download(df_arrivalw, 'Arrival WDay')
 
-        # --------------------------------------------Platform-------------------------------------------- #
-        st.divider()
-        st.subheader(analysis_list[4])
-        df_platform = group_dataframe(data, 'Source', 'Booking No')
-        df_platform.columns = ['Platform', 'Number of Booking']
-        df_platform.loc[df_platform.shape[0]] = df_platform.sum()
-        df_platform.iloc[-1, 0] = 'Grand Total'
-        display_download(df_platform, 'Platform')
+            # --------------------------------------------Platform-------------------------------------------- #
+            if 'Booking No' in data_cols and 'Source' in data_cols:
+                st.divider()
+                st.subheader(analysis_list[4])
+                df_platform = group_dataframe(data, 'Source', 'Booking No')
+                df_platform.columns = ['Platform', 'Number of Booking']
+                df_platform.loc[df_platform.shape[0]] = df_platform.sum()
+                df_platform.iloc[-1, 0] = 'Grand Total'
+                display_download(df_platform, 'Platform')
 
-        # --------------------------------------------Nights-------------------------------------------- #
-        st.divider()
-        st.subheader(analysis_list[5])
-        df_night = data[['Booking No', 'Total night(s)']].copy()
-        df_night['Class'] = df_night['Total night(s)'].apply(lambda x: 'More than 1 night' if x > 1 else '1 night')
-        df_night.columns = ['Number of Booking', 'Nights', 'Class']
-        df_night = group_dataframe(df_night, 'Class', 'Number of Booking')
-        df_night.loc[df_night.shape[0]] = df_night.sum()
-        df_night.iloc[-1, 0] = 'Grand Total'
-        display_download(df_night, 'Nights')
+            # --------------------------------------------Nights-------------------------------------------- #
+            if 'Booking No' in data_cols and 'Total night(s)' in data_cols:
+                st.divider()
+                st.subheader(analysis_list[5])
+                df_night = data[['Booking No', 'Total night(s)']].copy()
+                df_night['Class'] = df_night['Total night(s)'].apply(lambda x: 'More than 1 night' if x > 1 else '1 night')
+                df_night.columns = ['Number of Booking', 'Nights', 'Class']
+                df_night = group_dataframe(df_night, 'Class', 'Number of Booking')
+                df_night.loc[df_night.shape[0]] = df_night.sum()
+                df_night.iloc[-1, 0] = 'Grand Total'
+                display_download(df_night, 'Nights')
 
-        # --------------------------------------------Races-------------------------------------------- #
-        # st.divider()
-        # st.subheader(analysis_list[6])
-        # with open('races_prediction_model.pkl', 'rb') as f:
-        #     vec, model = pickle.load(f)
-        #
-        # tmp_race = data[['Name ID', 'Contact Name']].copy()
-        # name = tmp_race['Contact Name']
-        # name = vec.transform(name)
-        # races = model.predict(name)
-        # tmp_race['predicted_race'] = races
-        # tmp_race = tmp_race.drop('Contact Name', axis=1)
-        # df_race = pd.merge(data, tmp_race, on='Name ID', how='left')
-        # df_race = df_race.groupby('predicted_race') \
-        #                  .agg({'Name ID': 'nunique', 'Booking No': 'nunique'}) \
-        #                  .sort_values('Booking No', ascending=False) \
-        #                  .reset_index()
-        # df_race.columns = ['Predicted Race', 'Number of Guest', 'Number of Booking']
-        # df_race.loc[df_race.shape[0]] = df_race.sum()
-        # df_race.iloc[-1, 0] = 'Grand Total'
-        # display_download(df_race, 'Races')
+            # --------------------------------------------Races-------------------------------------------- #
+            # if 'Booking No' in data_cols and 'Contact Name' in data_cols:
+            #     st.divider()
+            #     st.subheader(analysis_list[6])
+            #     with open('races_prediction_model.pkl', 'rb') as f:
+            #         vec, model = pickle.load(f)
+            #
+            #     tmp_race = data[['Name ID', 'Contact Name']].copy()
+            #     name = tmp_race['Contact Name']
+            #     name = vec.transform(name)
+            #     races = model.predict(name)
+            #     tmp_race['predicted_race'] = races
+            #     tmp_race = tmp_race.drop('Contact Name', axis=1)
+            #     df_race = pd.merge(data, tmp_race, on='Name ID', how='left')
+            #     df_race = df_race.groupby('predicted_race') \
+            #                      .agg({'Name ID': 'nunique', 'Booking No': 'nunique'}) \
+            #                      .sort_values('Booking No', ascending=False) \
+            #                      .reset_index()
+            #     df_race.columns = ['Predicted Race', 'Number of Guest', 'Number of Booking']
+            #     df_race.loc[df_race.shape[0]] = df_race.sum()
+            #     df_race.iloc[-1, 0] = 'Grand Total'
+            #     display_download(df_race, 'Races')
 
 
 if __name__ == "__main__":
