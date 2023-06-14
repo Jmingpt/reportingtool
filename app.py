@@ -42,15 +42,15 @@ def run():
         accept_multiple_files=False,
     )
 
+    # ------------------------------------------File Management------------------------------------------ #
     if uploaded_file:
-        st.divider()
         data = pd.read_excel(uploaded_file, skiprows=2).dropna(subset='Booking Date')
         data['Booking Date'] = data['Booking Date'].apply(lambda x: x[:-6])
         data['Booking Date'] = pd.to_datetime(data['Booking Date'])
         data['Arrival Date'] = pd.to_datetime(data['Arrival Date'])
-        date_range = f"Date Range of dataset: " \
-                     f"**_{min(data['Booking Date']).strftime('%Y-%m-%d')}_ - " \
-                     f"_{max(data['Booking Date']).strftime('%Y-%m-%d')}_**"
+        date_range = f"""Date Range of dataset: 
+                         **_{min(data['Booking Date']).strftime('%Y-%m-%d')} - 
+                         {max(data['Booking Date']).strftime('%Y-%m-%d')}_**"""
         date_range_ph.markdown(date_range)
         data['Name ID'] = data['Contact Name'].apply(lambda x: x.lower().replace(' ', ''))
         data = data.drop(['Email', 'Phone No'], axis=1)
@@ -61,6 +61,7 @@ def run():
         )
 
         # ------------------------------------------Return------------------------------------------ #
+        st.divider()
         st.subheader('1. New vs returning customer')
         df_return = data[data['Status'] != 'Cancelled'].groupby('Name ID')['Booking No']\
                                                        .nunique()\
@@ -74,9 +75,9 @@ def run():
         df_return.iloc[-1, 0] = 'Grand Total'
         df_return.columns = ['Status', 'Number of Guest']
         displayNdownload(df_return, 'Return Status')
-        st.divider()
 
         # ------------------------------------------Room Type------------------------------------------ #
+        st.divider()
         st.subheader('2. Which type of room booked the most?')
         df_room = data[data['Status'] != 'Cancelled'].groupby('Room Type')['Booking No']\
                                                      .nunique()\
@@ -86,9 +87,9 @@ def run():
         df_room.iloc[-1, 0] = 'Grand Total'
         df_room.columns = ['Room Type', 'Number of Booking']
         displayNdownload(df_room, 'Room Type')
-        st.divider()
 
         # ------------------------------------------People------------------------------------------ #
+        st.divider()
         st.subheader('3. What type of people booked the room?')
         df_ppl = data[data['Status'] != 'Cancelled'][['Booking No', 'Room Type', 'NoAdult']].copy()
         df_ppl['People Type'] = df_ppl['NoAdult'].apply(lambda x: 'Single' if x == 1 else 'Double' if x == 2 else 'Group')
@@ -114,12 +115,13 @@ def run():
             fill_value=0,
             sort=True
         )
+        # pivot_table.loc['Grant Total'] = pivot_table.sum()
 
         displayNdownload(tmp1_ppl, 'Customer')
         displayNdownload(pivot_table, 'Customer and Room Type', False, True)
-        st.divider()
 
         # ------------------------------------------Time------------------------------------------ #
+        st.divider()
         st.subheader('4. When do they book the room?')
         df_when = data[data['Status'] != 'Cancelled'][['Booking No', 'Booking Date', 'Arrival Date']]
         df_when['Booking Day'] = df_when['Booking Date'].apply(lambda x: x.strftime('%A'))
@@ -130,30 +132,30 @@ def run():
             'Number of Booking',
             'booking_date',
             'arrival_date',
-            'booking_day',
-            'arrival_day',
             'Booking Day',
-            'Arrival Day'
+            'Arrival Day',
+            'Booking WDay',
+            'Arrival WDay'
         ]
-        df_booking = df_when.groupby('Booking Day')['Number of Booking']\
-                            .nunique()\
-                            .sort_values(ascending=False)\
-                            .reset_index()
-        df_booking.loc[df_booking.shape[0]] = df_booking.sum()
-        df_booking.iloc[-1, 0] = 'Grand Total'
+        df_bookingw = df_when.groupby('Booking WDay')['Number of Booking']\
+                             .nunique()\
+                             .sort_values(ascending=False)\
+                             .reset_index()
+        df_bookingw.loc[df_bookingw.shape[0]] = df_bookingw.sum()
+        df_bookingw.iloc[-1, 0] = 'Grand Total'
 
-        df_arrival = df_when.groupby('Arrival Day')['Number of Booking']\
-                            .nunique()\
-                            .sort_values(ascending=False)\
-                            .reset_index()
-        df_arrival.loc[df_arrival.shape[0]] = df_arrival.sum()
-        df_arrival.iloc[-1, 0] = 'Grand Total'
+        df_arrivalw = df_when.groupby('Arrival WDay')['Number of Booking']\
+                             .nunique()\
+                             .sort_values(ascending=False)\
+                             .reset_index()
+        df_arrivalw.loc[df_arrivalw.shape[0]] = df_arrivalw.sum()
+        df_arrivalw.iloc[-1, 0] = 'Grand Total'
 
-        displayNdownload(df_booking, 'Booking Day')
-        displayNdownload(df_arrival, 'Arrival Day')
-        st.divider()
+        displayNdownload(df_bookingw, 'Booking Day')
+        displayNdownload(df_arrivalw, 'Arrival Day')
 
         # ------------------------------------------Platform------------------------------------------ #
+        st.divider()
         st.subheader('5. Where do they book?')
         df_platform = data[data['Status'] != 'Cancelled'].groupby('Source')['Booking No']\
                                                          .nunique()\
@@ -163,9 +165,9 @@ def run():
         df_platform.iloc[-1, 0] = 'Grand Total'
         df_platform.columns = ['Platform', 'Number of Booking']
         displayNdownload(df_platform, 'Platform')
-        st.divider()
 
         # ------------------------------------------Nights------------------------------------------ #
+        st.divider()
         st.subheader('6. How long do they stay?')
         df_night = data[data['Status'] != 'Cancelled'][['Booking No', 'Total night(s)']].copy()
         df_night['Class'] = df_night['Total night(s)'].apply(lambda x: 'More than 1 night' if x > 1 else '1 night')
@@ -177,28 +179,28 @@ def run():
         df_night.loc[df_night.shape[0]] = df_night.sum()
         df_night.iloc[-1, 0] = 'Grand Total'
         displayNdownload(df_night, 'Nights')
-        st.divider()
 
         # ------------------------------------------Races------------------------------------------ #
-#         st.subheader('7. Races Prediction (Additional)')
-#         with open('races_prediction_model.pkl', 'rb') as f:
-#             vec, model = pickle.load(f)
-
-#         tmp_race = data[data['Status'] != 'Cancelled'][['Name ID', 'Contact Name']]
-#         name = tmp_race['Contact Name']
-#         name = vec.transform(name)
-#         races = model.predict(name)
-#         tmp_race['predicted_race'] = races
-#         tmp_race = tmp_race.drop('Contact Name', axis=1)
-#         df_race = pd.merge(data, tmp_race, on='Name ID', how='left')
-#         df_race = df_race[df_race['Status'] != 'Cancelled'].groupby('predicted_race')\
-#                                                            .agg({'Name ID': 'nunique', 'Booking No': 'nunique'})\
-#                                                            .sort_values('Booking No', ascending=False)\
-#                                                            .reset_index()
-#         df_race.loc[df_race.shape[0]] = df_race.sum()
-#         df_race.iloc[-1, 0] = 'Grand Total'
-#         df_race.columns = ['Predicted Race', 'Number of Guest', 'Number of Booking']
-#         displayNdownload(df_race, 'Races')
+        # st.divider()
+        # st.subheader('7. Races Prediction (Additional)')
+        # with open('races_prediction_model.pkl', 'rb') as f:
+        #     vec, model = pickle.load(f)
+        #
+        # tmp_race = data[data['Status'] != 'Cancelled'][['Name ID', 'Contact Name']]
+        # name = tmp_race['Contact Name']
+        # name = vec.transform(name)
+        # races = model.predict(name)
+        # tmp_race['predicted_race'] = races
+        # tmp_race = tmp_race.drop('Contact Name', axis=1)
+        # df_race = pd.merge(data, tmp_race, on='Name ID', how='left')
+        # df_race = df_race[df_race['Status'] != 'Cancelled'].groupby('predicted_race')\
+        #                                                    .agg({'Name ID': 'nunique', 'Booking No': 'nunique'})\
+        #                                                    .sort_values('Booking No', ascending=False)\
+        #                                                    .reset_index()
+        # df_race.loc[df_race.shape[0]] = df_race.sum()
+        # df_race.iloc[-1, 0] = 'Grand Total'
+        # df_race.columns = ['Predicted Race', 'Number of Guest', 'Number of Booking']
+        # displayNdownload(df_race, 'Races')
 
 
 if __name__ == "__main__":
